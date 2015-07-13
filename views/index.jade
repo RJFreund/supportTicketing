@@ -1,0 +1,182 @@
+extends layout
+
+block content
+  h1= title
+  h2 Product: Encompass
+  //button(onclick='sortByCreateDateDesc()') Sort By Create Date Descending
+  //button(onclick='sortByPriorityDesc()') Sort By Priority Descending
+  div#board(ng-controller='boardController')
+      div.column(id='column{{column.id}}', ng-repeat='column in columns' data-column-id='{{ column.id }}' ng-init='columnIndex = $index')
+        div.columnHeader
+          | {{column.title}}
+        div.card(
+          id='card{{card.id}}'
+          ng-repeat='card in cards'
+          data-card-id='{{ card.id }}'
+          data-column-id='{{ card.columnId }}'
+          data-card-createDate='{{card.createDate}}'
+          data-card-priority='{{card.priority}}'
+        )
+          | {{ card.title }}
+          br
+          | columnId: {{card.columnId}}
+          br
+          | createDate: {{ card.createDate }}
+          br
+          | priority: {{ card.priority }}
+  script.
+    var socket = io();
+    socket.on('cardMove', function(msg){
+      console.log('cardMove');
+      var scope = angular.element(document.getElementById('board')).scope();
+      var origColumn = $('#column' + msg.origColumnId);
+      var destColumn = $('#column' + msg.destColumnId);
+      var origColumnCards = origColumn.children('.card');
+      var destColumnCards = destColumn.children('.card');
+      var origCard = origColumnCards.eq(msg.origIndex);
+      var destCard = destColumnCards.eq(msg.destIndex);
+      var destFirstCard = destColumnCards.eq(0);
+      if (msg.destIndex >= destColumnCards.length)
+      {
+        origCard.appendTo(destColumn);
+      }
+      else
+      {
+        origCard.insertBefore(destCard);
+      }
+      scope.$apply(function(){
+        scope.cards[msg.cardIndex].columnId = msg.destColumnId;
+      });
+    });
+    socket.on('cardReorder', function(msg){
+      console.log('cardReorder');
+      var scope = angular.element(document.getElementById('board')).scope();
+      var origColumn = $('#column' + msg.origColumnId);
+      var origColumnCards = origColumn.children('.card');
+      var origCard = origColumnCards.eq(msg.origIndex);
+      var destCard = origColumnCards.eq(msg.destIndex);
+      var origFirstCard = origColumnCards.eq(0);
+      if (msg.destIndex === 0){
+        origCard.insertBefore(origFirstCard);
+      }
+      else
+      {
+        origCard.insertAfter(destCard);
+      }
+      scope.cards[msg.cardIndex].columnId = msg.destColumnId;
+    });
+    var app = angular.module('app', []);
+    app.controller('boardController', ['$scope', function($scope){
+      function isOrigColumnReorder(origColumnId, destColumnId)
+      {
+        return origColumnId === destColumnId;
+      }
+
+      var origColumnId;
+      var origIndex;
+      var destColumnId;
+      var destIndex;
+      var hasItemBeenUpdated = false;
+
+      $scope.cards = [
+        {id: 0, title: 'ticket 1', columnId: 0, createDate: '7/7/2015', priority: '1'},
+        {id: 1, title: 'ticket 2', columnId: 0, createDate: '7/8/2015', priority: '2'},
+        {id: 2, title: 'ticket 3', columnId: 0, createDate: '7/9/2015', priority: '3'}
+      ];
+
+      $scope.columns = [
+        {id: 0, title: 'New'},
+        {id: 1, title: 'In progress'},
+        {id: 2, title: 'Complete'},
+      ];
+
+      //$scope.cards[0].columnId = '1';
+      angular.element(document.getElementById('board')).ready(function()
+      {
+        $('.card').each(function(index){
+          var parentColumn = $(this).parent().closest('div.column');
+          var parentColumnId = parentColumn.attr('data-column-id');
+          var cardColumnId = $(this).attr('data-column-id');
+          if (cardColumnId != parentColumnId){
+            $(this).remove();
+          }
+        });
+
+        $('.column').sortable({
+          connectWith: '.column',
+          sortable: '.card',
+          items: '.card',
+          placeholder: 'card',
+          start: function(event, ui)
+          {
+            var origColumn = ui.item.parent().closest('div.column')
+            origColumnId = origColumn.attr('data-column-id');
+            origIndex = origColumn.children('.card').index(ui.item);
+          },
+          update: function(event, ui){
+            var destColumn = ui.item.parent().closest('div.column');
+            destColumnId = destColumn.attr('data-column-id');
+            if (isOrigColumnReorder(origColumnId, destColumnId))
+            {
+              destIndex = destColumn.children('.card').index(ui.item);
+              for(var i = 0; i < $scope.cards.length; i++)
+              {
+                if(parseInt(ui.item.attr('data-card-id')) === parseInt($scope.cards[i].id)){
+                  cardIndex = i;
+                  break;
+                }
+              }
+              socket.emit('cardReorder',
+                {
+                  origColumnId: origColumnId,
+                  origIndex: origIndex,
+                  destIndex: destIndex,
+                  cardIndex: cardIndex
+                }
+              );
+            }
+            else
+            {
+              if (hasItemBeenUpdated){
+                hasItemBeenUpdated = false;
+              }
+              else
+              {
+                destIndex = destColumn.children('.card').index(ui.item);
+                var cardIndex;
+                for(var i = 0; i < $scope.cards.length; i++)
+                {
+                  if(parseInt(ui.item.attr('data-card-id')) === parseInt($scope.cards[i].id)){
+                    cardIndex = i;
+                    break;
+                  }
+                }
+
+                $scope.$apply(function(){
+                  $scope.cards[cardIndex].columnId = destColumnId;
+                  hasItemBeenUpdated = true;
+                  socket.emit('cardMove',
+                    {
+                      origColumnId: origColumnId,
+                      origIndex: origIndex,
+                      destColumnId: destColumnId,
+                      destIndex: destIndex,
+                      cardIndex: cardIndex
+                    }
+                  );
+                });
+              }
+            }
+          }
+        });
+      });
+    }]);
+
+    function sortByPriorityDesc(){
+      var array;
+      $('.column').each(function(index){
+        array = [];
+        $(this).children('.card').each(function(index){
+        });
+      });
+    }

@@ -1,0 +1,36 @@
+body {
+  padding: 50px;
+  font: 14px "Lucida Grande", Helvetica, Arial, sans-serif;
+}
+
+a {
+  color: #00B7FF;
+}
+
+#board{
+  width: 1000px;
+  height: 600px;
+  /* border: 1px solid black;*/
+}
+
+.column{
+  width: 110px;
+  height:600px;
+  border: 2px solid black;
+  float: left;
+  margin-right: 5px;
+}
+
+.card{
+  width: 100px;
+  height: 100px;
+  margin: 0 auto;
+  margin-bottom: 10px;
+  border: 2px solid black;
+}
+
+.columnHeader{
+  text-align: center;
+  font-weight: bold;
+  font-size: 18px;
+}
